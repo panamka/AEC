@@ -35,8 +35,8 @@ def train_epoch(model, farend, near_mic, target, optimizer, criterion, max_norm_
         log['lr_train'] = param_group['lr']
 
     pred = model(farend, near_mic)
-    loss = criterion(target, pred)
-    loss = loss.mean()
+    loss = criterion(pred, target)
+    #loss = loss.mean()
     loss.backward()
     grad_norm = clip_grad_norm_(
         model.parameters(), max_norm_grad).item(
@@ -65,9 +65,9 @@ def main():
     max_grad_norm = 5
     device = 'cuda:0'
 
-    n_epoch = 20
+    n_epoch = 100
     batch_size = 1
-    lr = 5e-4
+    lr = 1e-3
     start_epoch = 0
 
     conf_kwargs = dict(
@@ -85,11 +85,11 @@ def main():
 
     model = Conformer(
         stft=StftHandler(),
-        n_channels=16,
-        num_layers=12,
-        inp_dim=514,  # 257,
+        num_layers=2,
+        inp_dim=257,  # 257,
         out_dim=257,
         conformer_kwargs=conf_kwargs, )
+
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr)
     criterion = torch.nn.L1Loss()
@@ -107,8 +107,6 @@ def main():
 
     for epoch in tqdm(range(start_epoch, n_epoch + start_epoch)):
         train_dict = train_epoch(model, farend, near_mic, target, optimizer, criterion,  max_grad_norm, device, epoch)
-
-
 
 
 if __name__ == '__main__':

@@ -24,7 +24,7 @@ class AECDataset(Dataset):
         else:
             self.audio_files_farend = self.audio_files_farend[train_len:]
 
-        print(f'Number of noises {len(self.audio_files_farend)}')
+        print(f'Number of samples {len(self.audio_files_farend)}')
 
     def __len__(self):
         return len(self.audio_files_farend)
@@ -41,9 +41,9 @@ class AECDataset(Dataset):
         near_mic, _ = sf.read(near_mic_path, dtype='float32')
         target, _ = sf.read(near_speech_path, dtype='float32')
 
-        farend = farend[3*sr:6*sr]
-        near_mic = near_mic[3*sr:6*sr]
-        target = target[3*sr:6*sr]
+        farend = farend
+        near_mic = near_mic
+        target = target
         return farend, near_mic, target
 
     def __getitem__(self, idx):
@@ -54,11 +54,11 @@ class AECDataset(Dataset):
 
         farend, near_mic, target = self.extractor(farend_path, near_mic_path, near_speech_path)
 
-        # if len(farend_path) < self.max_len:
-        #     farend = self.padding(farend, self.max_len)
-        #     #echo_path = self.padding(echo_path, self.max_len)
-        #     near_mic_path = self.padding(near_mic_path, self.max_len)
-        #     target = self.padding(target, self.max_len)
+        if len(farend_path) < self.max_len:
+            farend = self.padding(farend, self.max_len)
+            #echo_path = self.padding(echo_path, self.max_len)
+            near_mic = self.padding(near_mic, self.max_len)
+            target = self.padding(target, self.max_len)
 
         return farend, near_mic, target
 
