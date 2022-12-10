@@ -7,11 +7,13 @@ import soundfile as sf
 from model.model_v1 import Conformer
 from model.stft import StftHandler
 
-from dataset import AECDataset, DataLoader, DatasetInf, collate_fn
-
-
+from dataset import DataLoader, DatasetInf
 
 def build_model(path):
+    '''
+    :param path: path to the folder with snapshot
+    :return: trained model in eval mode
+    '''
     conf_kwargs = dict(
         dim=256,
         dim_head=64,
@@ -58,9 +60,13 @@ def load_data(batch_size=1):
 
 def main():
     device='cuda:0'
+
+    #path to the folder with last_snapshot.tar
     path = './results'
     model = build_model(path)
     model.to(device)
+
+    #eval on several samples from real dataset AEC Challenge
     test_loader = load_data()
     farend, near_mic, target, path_id = next(iter(test_loader))
 
@@ -71,16 +77,9 @@ def main():
     for farend, near_mic, target, path_id in tqdm(test_loader):
         farend = farend.to(device, dtype=torch.float)
         near_mic = near_mic.to(device, dtype=torch.float)
-        target = target.to(device, dtype=torch.float)
+        #target = target.to(device, dtype=torch.float)
         pred = model(farend, near_mic)
-
         sf.write(f'./dataset-test-real/pred/{path_id[0]}_pred.wav', pred[0].detach().cpu().numpy(), samplerate=16_000)
-
-
-
-
-
-
 
 
 if __name__ == '__main__':
