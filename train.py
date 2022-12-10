@@ -10,9 +10,12 @@ import math
 
 from dataset import AECDataset, DataLoader
 
-from dataset import AECDataset, DataLoader
+from dataset import AECDataset, DataLoader, collate_fn
 from model.model_v1 import Conformer
 from model.stft import StftHandler
+
+from metrics.aec_metrics import calc_stoi as stoi
+from metrics.aec_metrics import calc_sdr as sdr
 
 def to_numpy(x):
     return x.detach().cpu().numpy()
@@ -44,11 +47,11 @@ def train_epoch(model, loader, optimizer, scheduler, criterion, metric_dict, max
         optimizer.step()
         scheduler.step()
         losses.append(loss.item())
-
-        #for name, metrics in metric_dict.items():
-            #values = metrics(pred_mask, vad_mask)
-            #values = to_numpy(values)
-            #log[name] = np.mean(values)
+        log['train_loss'] = np.mean(losses)
+        for name, metrics in metric_dict.items():
+            values = metrics(pred, target)
+            values = to_numpy(values)
+            log[name] = np.mean(values)
     print(np.mean(losses), 'train loss')
 
     return {'train_loss' : np.mean(losses)} | log
@@ -67,11 +70,11 @@ def val_epoch(model, loader, criterion, metric_dict, device):
         pred = model(farend, near_mic)
         loss = criterion(pred, target)
         losses.append(loss.item())
-
-        # for name, metrics in metric_dict.items():
-        #     values = metrics(pred, target)
-        #     values = to_numpy(values)
-        #     log[name] = np.mean(values)
+        log['val_loss'] = np.mean(losses)
+        for name, metrics in metric_dict.items():
+            values = metrics(pred, target)
+            values = to_numpy(values)
+            log[name] = np.mean(values)
     print(np.mean(losses), 'val loss')
     return {'val_loss' : np.mean(losses)} | log
 
@@ -89,10 +92,13 @@ def main():
     device = 'cuda:0'
     n_epochs = 600
     batch_size = 8
-    lr =1e-3
+    lr =1e-5
     start_epoch = 0
     best_loss = float('inf')
-    metric_dict = {}
+    metric_dict = {
+        "STOI": stoi,
+        "SDR": sdr,
+    }
 
     criterion = torch.nn.L1Loss()
 
@@ -106,12 +112,12 @@ def main():
         attn_dropout=0.1,
         ff_dropout=0.1,
         conv_dropout=0.1,
-        look_ahead=6,
+        #look_ahead=6,
     )
 
     model = Conformer(
         stft=StftHandler(),
-        num_layers=2,
+        num_layers=8,
         inp_dim=257,  # 257,
         out_dim=257,
         conformer_kwargs=conf_kwargs, )
@@ -121,7 +127,7 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr)
     lr_scheduler = build_sch(optimizer)
 
-    saveroot = './results/'
+    saveroot = './results/model_with_norm'
     if os.path.exists(saveroot):
         ans = input(f'{saveroot} already exists. Do you want to rewtire it? Y/n: ').lower()
         if ans == 'y':
@@ -151,15 +157,18 @@ def main():
 
 
 
-    farend_path = "./synthetic/farend_speech"
-    echo_path = "./synthetic/echo_signal"
-    near_mic_path = "./synthetic/nearend_mic_signal"
-    near_speech_path = "./synthetic/nearend_speech"
+    farend_path = "dataset_synthetic/farend_speech"
+    echo_path = "dataset_synthetic/echo_signal"
+    near_mic_path = "dataset_synthetic/nearend_mic_signal"
+    near_speech_path = "dataset_synthetic/nearend_speech"
 
     train_dataset = AECDataset(farend_path, echo_path, near_mic_path, near_speech_path)
     test_dataset = AECDataset(farend_path, echo_path, near_mic_path, near_speech_path, train=False)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=4)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=4)
+
+    #train_loader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=collate_fn, shuffle=True, pin_memory=True, num_workers=4)
+    #test_loader = DataLoader(test_dataset, batch_size=batch_size, collate_fn=collate_fn, shuffle=True, pin_memory=True, num_workers=4)
 
 
     for epoch in tqdm(range(start_epoch, n_epochs + start_epoch)):
@@ -168,15 +177,15 @@ def main():
                                  max_grad_norm, device)
         val_dict = val_epoch(model, test_loader, criterion, metric_dict, device)
         print('train metrics')
-        # for key, value in train_dict.items():
-        #     logger_tb.log(epoch, value, key, 'train')
-        #     print(f'{key}: {value}')
-        #     train_history[key].append(value)
+        for key, value in train_dict.items():
+            #logger_tb.log(epoch, value, key, 'train')
+            print(f'{key}: {value}')
+            train_history[key].append(value)
         print('val metrics')
-        # for key, value in val_dict.items():
-        #     logger_tb.log(epoch, value, key, 'val')
-        #     print(f'{key}: {value}')
-        #     val_history[key].append(value)
+        for key, value in val_dict.items():
+            #logger_tb.log(epoch, value, key, 'val')
+            print(f'{key}: {value}')
+            val_history[key].append(value)
         snapshot = {
             'model': model.state_dict(),
             'opt': optimizer.state_dict(),
@@ -194,7 +203,7 @@ def main():
             best_snapshot_path = os.path.join(saveroot, 'best_snapshot.tar')
             torch.save(snapshot, best_snapshot_path)
 
-start_lr = 1e-3
+start_lr = 1e-5
 main_lr = 1e-3
 
 # main_lr = 4e-3
