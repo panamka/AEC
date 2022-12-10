@@ -127,7 +127,7 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr)
     lr_scheduler = build_sch(optimizer)
 
-    saveroot = './results/model_with_norm'
+    saveroot = './results'
     if os.path.exists(saveroot):
         ans = input(f'{saveroot} already exists. Do you want to rewtire it? Y/n: ').lower()
         if ans == 'y':
