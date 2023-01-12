@@ -1,6 +1,6 @@
 import torch
 from torch.nn.utils import clip_grad_norm_
-from torch.nn import DataParallel as DP
+# from torch.nn import DataParallel as DP
 from collections import defaultdict
 from tqdm.auto import tqdm
 import numpy as np
@@ -8,10 +8,9 @@ import os
 from shutil import rmtree
 import math
 
-from dataset import AECDataset, DataLoader
 
 from dataset import AECDataset, DataLoader, collate_fn
-from model.model_v1 import Conformer
+from model.model_cnn_lstm_causal import ConvLSTM
 from model.stft import StftHandler
 
 from metrics.aec_metrics import calc_stoi as stoi
@@ -80,7 +79,7 @@ def val_epoch(model, loader, criterion, metric_dict, device):
 
 def main():
     logdir = 'tensorboard_logging'
-    model_name = 'aec_conformer'
+    model_name = 'aec_conformer_causal'
 
     #logger_tb = TensorboardLogger(os.path.join(logdir,model_name))
 
@@ -101,33 +100,47 @@ def main():
     }
 
     criterion = torch.nn.L1Loss()
+    #
+    # conf_kwargs = dict(
+    #     dim=256,
+    #     dim_head=64,
+    #     heads=4,
+    #     ff_mult=2,
+    #     conv_expansion_factor=2,
+    #     conv_kernel_size=31,
+    #     attn_dropout=0.1,
+    #     ff_dropout=0.1,
+    #     conv_dropout=0.1,
+    #     look_ahead=6,
+    # )
+    #
+    # model = Conformer(
+    #     stft=StftHandler(),
+    #     num_layers=8,
+    #     inp_dim=257,  # 257,
+    #     out_dim=257,
+    #     conformer_kwargs=conf_kwargs, )
 
-    conf_kwargs = dict(
+    conv_kwargs = dict(
         dim=256,
-        dim_head=64,
-        heads=4,
-        ff_mult=2,
         conv_expansion_factor=2,
         conv_kernel_size=31,
-        attn_dropout=0.1,
-        ff_dropout=0.1,
         conv_dropout=0.1,
-        #look_ahead=6,
     )
 
-    model = Conformer(
+    model = ConvLSTM(
         stft=StftHandler(),
-        num_layers=8,
-        inp_dim=257,  # 257,
+        num_layers=4,
+        inp_dim=257,
         out_dim=257,
-        conformer_kwargs=conf_kwargs, )
+        conv_kwargs=conv_kwargs, )
 
     model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr)
     lr_scheduler = build_sch(optimizer)
 
-    saveroot = './results'
+    saveroot = './results/cnn_lstm_causal'
     if os.path.exists(saveroot):
         ans = input(f'{saveroot} already exists. Do you want to rewtire it? Y/n: ').lower()
         if ans == 'y':

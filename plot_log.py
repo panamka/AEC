@@ -8,19 +8,9 @@ path = './results/last_snapshot.tar'
 snapshot = torch.load(path, map_location='cpu')
 
 
-# print(snapshot['train_history']['train_loss'])
-# print(snapshot['train_history']['STOI'])
-# print(snapshot['train_history']['SDR'])
-#
-#
-# print(snapshot['val_history']['val_loss'])
-# print(snapshot['val_history']['STOI'])
-# print(snapshot['val_history']['SDR'])
-
-
 
 if __name__ == '__main__':
-    path = './results/'
+    path = './results/conformer_causal'
     log = torch.load(os.path.join(path, 'last_snapshot.tar'), map_location=torch.device('cpu'))['val_history']
 
     print(path)
@@ -38,16 +28,5 @@ if __name__ == '__main__':
         print(name)
         plt.plot(values, label=name)
 
-        # assert False
-        #
-        # for operation, values in sorted(by_operation.items()):
-        #     if operation == 'mean':
-        #         values = np.array(values)
-        #         plt.plot(
-        #             values[:, 0],
-        #             values[:, 1],
-        #             label=operation
-        #             )
-        # ax.legend()
         ax.grid()
     plt.show()

@@ -54,15 +54,6 @@ def build_data(folder_path, batch_size):
 
 
 def processing_signal(farend, near_mic, model, t, device):
-    # farend = torch.from_numpy(farend)
-    # near_mic = torch.from_numpy(near_mic)
-
-    # farend = farend.to(device, dtype=torch.float)
-    # farend = farend.unsqueeze(0)
-
-    # near_mic = near_mic.to(device, dtype=torch.float)
-    # near_mic = near_mic.unsqueeze(0)
-
     first_step = 480
     frame = int(t * 16000 / 1000)
 

@@ -11,7 +11,9 @@ import math
 import soundfile as sf
 
 from dataset import AECDataset, DataLoader, collate_fn
-from model.model_v1 import Conformer
+#from model.model_v1 import Conformer
+
+from model.model_cnn_lstm_causal import ConvLSTM
 from model.stft import StftHandler
 
 from metrics.aec_metrics import calc_stoi as stoi
@@ -71,30 +73,23 @@ def main():
     max_grad_norm = 5
     device = 'cuda:0'
 
-    n_epoch = 10
+    n_epoch = 100
     batch_size = 1
     lr = 1e-3
     start_epoch = 0
-
-    conf_kwargs = dict(
+    conv_kwargs = dict(
         dim=256,
-        dim_head=64,
-        heads=4,
-        ff_mult=2,
         conv_expansion_factor=2,
         conv_kernel_size=31,
-        attn_dropout=0.1,
-        ff_dropout=0.1,
         conv_dropout=0.1,
-        look_ahead=6,
     )
 
-    model = Conformer(
+    model = ConvLSTM(
         stft=StftHandler(),
-        num_layers=2,
-        inp_dim=257,  # 257,
+        num_layers=4,
+        inp_dim=257,
         out_dim=257,
-        conformer_kwargs=conf_kwargs, )
+        conv_kwargs=conv_kwargs, )
 
     metric_dict = {
         "STOI" : stoi,
@@ -104,7 +99,7 @@ def main():
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr)
     criterion = torch.nn.L1Loss()
-    saveroot = './results/'
+    saveroot = './results/overfit'
 
     farend_path = "dataset_synthetic/farend_speech"
     echo_path = "dataset_synthetic/echo_signal"
