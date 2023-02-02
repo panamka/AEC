@@ -79,7 +79,6 @@ class FDKF():
     e = torch.zeros(batch_size, num_block * self.M).to(device)
 
     for n in range(num_block):
-      print(n)
 
       x_n = torch.cat([x_old, x[:, n * self.M:(n + 1) * self.M]], dim=1)
       d_n = d[:, n * self.M:(n + 1) * self.M]
